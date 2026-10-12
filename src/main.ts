@@ -1,9 +1,13 @@
 import './style.css';
+import { readSavedLeague, reusableLeague, saveLeague } from './saved-leagues.ts';
 
 type Gameweek = { event: number; actual: number; points: number; removedPoints: number; captainPoints: number; benchPoints: number; liveAdjustment?: number; transferCost: number; captain: string; viceCaptain: string; effectiveCaptain: string | null; subsIn: string[]; subsOut: string[]; pending: string[]; chip: string | null };
 type Row = { entry: number; team: string; manager: string; actualRank: number; actualPoints: number; points: number; removedPoints: number; captainPoints: number; benchPoints: number; sourceAdjustment?: number; transferCost: number; transfers: number; rank: number; rankChange: number; gameweeks: Gameweek[] };
-type LeagueResult = { league: { id: number; name: string }; asOf: string; gameweek: number; startEvent: number; provisional: boolean; removedFixtures: number; entries: number; pendingFixtures: string[]; standings: Row[]; warnings: string[] };
-type StreamMessage = { type: 'progress'; message: string; completed?: number; total?: number } | { type: 'result'; data: LeagueResult } | { type: 'error'; message: string };
+export type LeagueResult = { league: { id: number; name: string }; asOf: string; gameweek: number; startEvent: number; provisional: boolean; removedFixtures: number; entries: number; pendingFixtures: string[]; standings: Row[]; warnings: string[]; freshness?: { state: 'saved'; reason: string } };
+type StreamMessage = { type: 'progress'; message: string; completed?: number; total?: number } | { type: 'result'; data: LeagueResult } | { type: 'error'; message: string; allowSaved?: boolean };
+class LeagueLoadError extends Error {
+  constructor(message: string, readonly allowSaved = false) { super(message); }
+}
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const form = $('league-form') as HTMLFormElement;
@@ -35,10 +39,13 @@ async function loadLeague(id: string, updateUrl = true) {
   let receivedResult = false;
   const timeout = setTimeout(() => request.abort(new Error('This league took too long to calculate. Please try again.')), 260_000);
   try {
-    const response = await fetch(`/api/league?id=${encodeURIComponent(id)}`, { signal: request.signal });
+    const response = await fetch(`/api/league?id=${encodeURIComponent(id)}`, { signal: request.signal }).catch(() => {
+      request.signal.throwIfAborted();
+      throw new LeagueLoadError('Your connection to Withoutcheaty was interrupted. Please try again.', true);
+    });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.message || payload?.error || 'The league could not be loaded. Please try again.');
+      throw new LeagueLoadError(payload?.message || payload?.error || 'Withoutcheaty could not load the league. Please try again.', payload?.allowSaved ?? [502, 503, 504].includes(response.status));
     }
     if (!response.body) throw new Error('Your browser could not read the live calculation. Please try again.');
     const reader = response.body.getReader();
@@ -47,7 +54,7 @@ async function loadLeague(id: string, updateUrl = true) {
     const consume = (line: string) => {
       if (!line.trim()) return;
       const message = JSON.parse(line) as StreamMessage;
-      if (message.type === 'error') throw new Error(message.message);
+      if (message.type === 'error') throw new LeagueLoadError(message.message, message.allowSaved);
       if (message.type === 'progress') {
         $('loading-message').textContent = message.message;
         $('loading-detail').textContent = message.total ? `${message.completed ?? 0} of ${message.total} checked. Every captain and substitute counts.` : 'Large leagues can take a little longer. We’ll keep you posted.';
@@ -56,11 +63,15 @@ async function loadLeague(id: string, updateUrl = true) {
         loadedId = id;
         receivedResult = true;
         renderResult(result);
+        saveLeague(result);
         if (updateUrl) { const url = new URL(location.href); url.searchParams.set('league', id); history.replaceState({}, '', url); }
       }
     };
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await reader.read().catch(() => {
+        request.signal.throwIfAborted();
+        throw new LeagueLoadError('The connection was interrupted during the calculation. Please try again.', true);
+      });
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n'); buffer = lines.pop() || '';
@@ -68,10 +79,22 @@ async function loadLeague(id: string, updateUrl = true) {
     }
     buffer += decoder.decode();
     consume(buffer);
-    if (!receivedResult) throw new Error('The calculation was interrupted. Please try again.');
+    if (!receivedResult) throw new LeagueLoadError('The calculation was interrupted. Please try again.', true);
   } catch (error) {
     if (currentRequest !== request) return;
     if (request.signal.aborted && !(request.signal.reason instanceof Error && request.signal.reason.name !== 'AbortError')) return;
+    if (!request.signal.aborted && error instanceof LeagueLoadError && error.allowSaved) {
+      const saved = reusableLeague(result, Number(id)) ? result : readSavedLeague(Number(id));
+      if (saved) {
+        result = { ...saved, freshness: { state: 'saved', reason: error.message } };
+        loadedId = id;
+        renderResult(result);
+        if (updateUrl) { const url = new URL(location.href); url.searchParams.set('league', id); history.replaceState({}, '', url); }
+        return;
+      }
+    }
+    // A retained table must never look like a successful refresh after an error.
+    $('results').hidden = true;
     $('request-error').textContent = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
     $('request-error').hidden = false;
   } finally {
@@ -88,7 +111,10 @@ function renderResult(data: LeagueResult) {
   const eventLabel = data.gameweek ? `GW ${data.startEvent}–${data.gameweek}` : 'Season not started';
   $('results-scope').textContent = `League ${data.league.id} · ${eventLabel} · ${data.entries} ${data.entries === 1 ? 'manager' : 'managers'} · ${data.removedFixtures} City ${data.removedFixtures === 1 ? 'fixture' : 'fixtures'} removed`;
   const asOf = new Date(data.asOf);
-  $('results-updated').textContent = `Checked ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone: 'Europe/London' }).format(asOf)}`;
+  const calculatedAt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone: 'Europe/London' }).format(asOf);
+  $('results-updated').textContent = `Calculated ${calculatedAt}`;
+  $('saved-result-note').hidden = !data.freshness;
+  $('saved-result-note').textContent = data.freshness ? `SAVED RESULT · Last successfully calculated ${calculatedAt}. ${data.freshness.reason} These points have not been refreshed.` : '';
   $('provisional-note').hidden = !data.provisional;
   $('provisional-note').textContent = `PROVISIONAL · Gameweek ${data.gameweek} is not final. Includes projected automatic substitutions.${data.pendingFixtures.length ? ` Still to finish: ${data.pendingFixtures.join(', ')}.` : ' Final points and FPL corrections can still change the result.'}`;
   const leader = data.standings[0];

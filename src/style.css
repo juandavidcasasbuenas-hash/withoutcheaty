@@ -57,3 +57,5 @@
   .method-stamp{display:none}
   .results-heading .eyebrow{font-size:9px;letter-spacing:1px;line-height:1.6;max-width:230px}
 }
+
+.saved-result-note{background:#e1eef5;border-left-color:var(--blue);color:var(--ink)}

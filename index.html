@@ -44,12 +44,13 @@
         <section id="results" class="results" aria-labelledby="league-title" hidden>
           <div class="results-heading"><div><p class="eyebrow" id="results-kicker">114 CHARGES. ZERO CITY FIXTURES.</p><h2 id="league-title"></h2></div><div class="result-actions"><button class="button button-small" id="share-button" type="button">Copy link ↗</button><button class="button button-small" id="refresh-button" type="button" aria-label="Refresh league standings">Refresh ↻</button></div></div>
           <div class="results-meta"><span id="results-scope"></span><span id="results-updated"></span></div>
+          <p class="provisional-note saved-result-note" id="saved-result-note" role="status" hidden></p>
           <p class="provisional-note" id="provisional-note" hidden></p>
           <p class="result-story" id="result-story"></p>
           <div class="standings-wrap"><table class="standings"><caption class="sr-only">Alternative FPL league standings with Manchester City fixtures removed</caption><thead><tr><th scope="col">Pos.</th><th scope="col">Team / manager</th><th scope="col" class="number original-heading">FPL points</th><th scope="col" class="number">Without City</th><th scope="col" class="number change-heading">Difference</th><th scope="col" class="movement-heading">Movement</th></tr></thead><tbody id="standings-body"></tbody></table></div>
           <div class="table-footer"><p>Select a team to see its gameweek breakdown.</p><button class="text-button" id="download-button" type="button">Download CSV ↓</button></div>
           <div id="result-warnings" class="result-warnings" hidden></div>
-          <p class="source-note">Calculated from the <a id="source-link" target="_blank" rel="noopener noreferrer">official FPL API ↗</a>. Updates when you look up or refresh a league.</p>
+          <p class="source-note">Calculated from the <a id="source-link" target="_blank" rel="noopener noreferrer">official FPL API ↗</a>. Refresh checks for new points. If FPL cannot be reached, a saved table from the last 24 hours may be shown with its original calculation time.</p>
         </section>
         <section class="methodology" id="methodology" aria-labelledby="method-title">
           <div class="method-intro"><p class="eyebrow">THE BANTER’S PETTY. THE MATHS ISN’T.</p><h2 id="method-title">How this result<br> was calculated.</h2><p>No new transfers. No hindsight.<br> Just your original decisions, rescored.</p><span class="method-stamp" aria-hidden="true">BENCH CHECKED<br>ARMBAND PASSED</span></div>

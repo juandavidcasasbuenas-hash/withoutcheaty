@@ -1,5 +1,6 @@
 import { FplClient, FplError, parseLeagueId, settleAll } from '../lib/fpl-client.js';
 import { prepareGameweek, scoreEntry } from '../lib/scoring.js';
+import { leagueSnapshots, usableSnapshot, FRESH_MS } from '../lib/league-snapshots.js';
 
 const MEMBER_LIMIT = 200;
 const REQUEST_TIMEOUT_MS = 250_000;
@@ -189,7 +190,30 @@ function errorResponse(message, status) {
   });
 }
 
-export function createLeagueHandler({ client, timeoutMs = REQUEST_TIMEOUT_MS, now, scorer, prepare } = {}) {
+export async function* loadLeague(id, options, snapshots) {
+  const now = () => (options.now?.() ?? new Date()).getTime();
+  let saved;
+  try { saved = await snapshots?.get(id); } catch { console.warn('Could not read league snapshot'); }
+  if (usableSnapshot(saved, id, now()) && now() - Date.parse(saved.asOf) < FRESH_MS) {
+    yield { type: 'result', data: saved };
+    return;
+  }
+  try {
+    for await (const message of calculateLeague(id, options)) {
+      if (message.type === 'result') {
+        try { await snapshots?.set(id, message.data); } catch { console.warn('Could not save league snapshot'); }
+      }
+      yield message;
+    }
+  } catch (error) {
+    if (!options.signal?.aborted && error.allowSaved && usableSnapshot(saved, id, now())) {
+      console.warn('Serving saved league after FPL failure', { leagueId: id, code: error.code, asOf: saved.asOf });
+      yield { type: 'result', data: { ...saved, freshness: { state: 'saved', reason: error.message } } };
+    } else throw error;
+  }
+}
+
+export function createLeagueHandler({ client, timeoutMs = REQUEST_TIMEOUT_MS, now, scorer, prepare, snapshots = client ? null : leagueSnapshots } = {}) {
   return {
     async fetch(request) {
       if (request.method !== 'GET') return errorResponse('Use GET to load a league.', 405);
@@ -200,9 +224,9 @@ export function createLeagueHandler({ client, timeoutMs = REQUEST_TIMEOUT_MS, no
       const abort = () => controller.abort(request.signal.reason || new FplError('Request cancelled.', 499));
       request.signal.addEventListener('abort', abort, { once: true });
       if (request.signal.aborted) abort();
-      const timer = setTimeout(() => controller.abort(new FplError('This league took too long to calculate. Please try again; the FPL API may be busy.', 504)), timeoutMs);
+      const timer = setTimeout(() => controller.abort(new FplError('This league took too long to calculate. Please try again.', 504, { code: 'CALCULATION_TIMEOUT' })), timeoutMs);
       const cleanUp = () => { clearTimeout(timer); request.signal.removeEventListener('abort', abort); };
-      const iterator = calculateLeague(id, { client, signal: controller.signal, now, scorer, prepare });
+      const iterator = loadLeague(id, { client, signal: controller.signal, now, scorer, prepare }, snapshots);
       let cancelled = false;
       const stream = new ReadableStream({
         async pull(output) {
@@ -215,8 +239,9 @@ export function createLeagueHandler({ client, timeoutMs = REQUEST_TIMEOUT_MS, no
             cleanUp();
             controller.abort(error);
             const message = error instanceof Error ? error.message : 'The league could not be calculated. Please try again.';
+            console.warn('League calculation failed', { leagueId: id, code: error.code || error.name || 'UNKNOWN', message });
             if (!cancelled) {
-              output.enqueue(encoder.encode(`${JSON.stringify({ type: 'error', message })}\n`));
+              output.enqueue(encoder.encode(`${JSON.stringify({ type: 'error', message, code: error.code, allowSaved: Boolean(error.allowSaved) })}\n`));
               output.close();
             }
             await iterator.return();

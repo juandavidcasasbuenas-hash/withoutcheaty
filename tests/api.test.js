@@ -149,7 +149,7 @@ test('ranking breaks equal points by transfers and preserves remaining shared ra
   assert.deepEqual(ranked.map(row => [row.entry, row.rank]), [[2, 1], [3, 1], [1, 3]]);
 });
 
-test('upstream retries only 429/5xx and stays on the fixed API origin', async () => {
+test('upstream retries 429/5xx, not 403, and stays on the fixed API origin', async () => {
   const urls = [];
   let attempts = 0;
   const client = new FplClient({ cache: null, sleep: async () => {}, fetchImpl: async (url, options) => {
@@ -164,7 +164,7 @@ test('upstream retries only 429/5xx and stays on the fixed API origin', async ()
   await assert.rejects(client.get('https://example.com/'), /Invalid FPL API endpoint/);
   let forbiddenCalls = 0;
   const forbidden = new FplClient({ cache: null, fetchImpl: async () => { forbiddenCalls++; return new Response('{}', { status: 403 }); } });
-  await assert.rejects(forbidden.bootstrap(), /not allowing access/);
+  await assert.rejects(forbidden.bootstrap(), error => error.code === 'FPL_ACCESS_DENIED' && error.allowSaved && /FPL is refusing requests from Withoutcheaty/.test(error.message));
   assert.equal(forbiddenCalls, 1);
 });
 
@@ -241,4 +241,57 @@ test('cancelling the stream aborts outstanding upstream work', async () => {
   await hasStarted;
   await reader.cancel();
   assert.equal(aborted, true);
+});
+
+test('a recently calculated shared table avoids duplicate FPL requests', async () => {
+  const { result: saved } = await run();
+  let calls = 0;
+  const result = await run(mockClient({ bootstrap: async () => { calls++; throw new Error('must not fetch'); } }), '123', {
+    snapshots: { get: async () => saved }, now: () => new Date('2026-10-12T18:00:20Z'),
+  });
+  assert.equal(calls, 0);
+  assert.deepEqual(result.result, saved);
+});
+
+test('FPL access failures return the complete saved table with its original time', async () => {
+  const { result: saved } = await run();
+  let writes = 0;
+  const result = await run(mockClient({ bootstrap: async () => {
+    throw new FplError('FPL is refusing requests from Withoutcheaty.', 503, { code: 'FPL_ACCESS_DENIED', allowSaved: true });
+  } }), '123', {
+    snapshots: { get: async () => saved, set: async () => { writes++; } },
+    now: () => new Date('2026-10-12T18:01:00Z'),
+  });
+  assert.equal(result.result.asOf, saved.asOf);
+  assert.deepEqual(result.result.standings, saved.standings);
+  assert.equal(result.result.freshness.state, 'saved');
+  assert.match(result.result.freshness.reason, /refusing requests/);
+  assert.equal(writes, 0);
+});
+
+test('saved tables never mask missing leagues, invalid data, scoring discrepancies or cancellation', async () => {
+  const { result: saved } = await run();
+  const options = { snapshots: { get: async () => saved }, now: () => new Date('2026-10-12T18:01:00Z') };
+  for (const client of [
+    mockClient({ standings: async () => { throw new FplError('Not found', 404); } }),
+    mockClient({ bootstrap: async () => ({}) }),
+    mockClient({ picks: async () => picks(8) }),
+    mockClient({ bootstrap: async signal => new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    }) }),
+  ]) {
+    const result = await run(client, '123', { ...options, timeoutMs: 20 });
+    assert.equal(result.result, undefined);
+    assert.ok(result.error);
+    assert.equal(result.messages.at(-1).allowSaved, false);
+  }
+});
+
+test('failed optional cache operations do not prevent a fresh result', async () => {
+  const result = await run(mockClient(), '123', { snapshots: {
+    get: async () => { throw new Error('cache unavailable'); },
+    set: async () => { throw new Error('cache unavailable'); },
+  } });
+  assert.equal(result.result.entries, 1);
+  assert.equal(result.result.freshness, undefined);
 });

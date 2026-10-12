@@ -54,17 +54,30 @@ team decisions are kept intact. New unsupported chips fail clearly.
   streams newline-delimited JSON progress, followed by a result or explicit error.
 - `lib/fpl-client.js`: Fixed FPL origin, paginated fetches, bounded in-process
   cache (30 seconds live / six hours finalized), seven concurrent upstream calls,
-  retry only for rate limits/server errors, cancellation and timeouts. Cache is
-  opportunistic; correctness does not rely on instance persistence.
+  up to three attempts for network errors, timeouts, rate limits and server
+  errors, cancellation and timeouts. Retries respect Retry-After (if the requested
+  wait exceeds 10 seconds, the request fails without retrying early). Access
+  refusals (401/403), missing resources and invalid data are not retried.
+- `lib/league-snapshots.js`: Whole validated tables in Vercel Runtime Cache plus
+  bounded process memory. Tables less than 30 seconds old avoid duplicate work.
+  On an upstream access/connectivity failure, a complete table less than 24 hours
+  old can be returned, explicitly marked saved with its original timestamp.
+  Cache reads/writes are best effort and do not block a fresh calculation.
+- `src/saved-leagues.ts`: The last three successful tables are also saved in the
+  browser, using the same 24-hour fallback window. Stored data is validated before
+  rendering. Disabled/full browser storage does not prevent fresh lookups.
 - `lib/scoring.js`: Pure scoring logic with shared gameweek contexts.
 - `tests/`: Mocked API behavior, anonymized real scoring snapshots and synthetic
   edge cases for substitutions, captains, chips, ties and source reconciliation.
 
-All live data stays server-side until the calculated response is returned. No
+All upstream data stays server-side until the calculated response is returned. No
 database, private FPL login, analytics or secrets are required. League/team names
 are escaped before rendering. CSV exports protect against formula injection.
-Lookups and Refresh obtain current data (live upstream responses may be cached
-for up to 30 seconds). Shareable URLs use `?league=<id>`.
+Lookups and Refresh try to obtain current data (live upstream responses may be
+cached for up to 30 seconds). Saved fallbacks never mix old and new gameweeks or
+reset their calculation time. Invalid leagues, scoring/data reconciliation
+errors, cancellation and whole-calculation timeouts do not trigger fallback.
+Shareable URLs use `?league=<id>`.
 
 ## Deploy to Vercel
 
@@ -82,4 +95,7 @@ are required. Production follows the repository's main branch.
   fixtures, classic-league standings, event live scores and entry gameweek picks.
 
 The public API is unofficially documented and can change or be unavailable. The
-site reports upstream access failures rather than displaying invented data.
+site distinguishes FPL refusing server access from network errors, timeouts and
+rate limits. A 403 response does not mean the FPL website is down. Caching reduces
+repeat requests and preserves recent results, but cannot restore upstream access
+for a league with no saved table. There is no proxy or alternate scoring source.
