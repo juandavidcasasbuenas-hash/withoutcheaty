@@ -129,7 +129,7 @@ $('share-button').addEventListener('click', async () => {
 });
 $('download-button').addEventListener('click', () => {
   if (!result) return;
-  const cell = (value: unknown) => { const raw = String(value); const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw; return `"${safe.replaceAll('"', '""')}"`; };
+  const cell = (value: unknown) => { const raw = String(value); const safe = typeof value === 'string' && /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw; return `"${safe.replaceAll('"', '""')}"`; };
   const rows: unknown[][] = [['Alternative rank', 'Team', 'Manager', 'Actual rank', 'FPL points', 'Without City', 'Points change', 'Position change', 'Removed fixture points', 'Captaincy adjustment', 'Bench adjustment', 'Live correction', 'Transfer hits', 'As of', 'Provisional']];
   for (const row of result.standings) rows.push([row.rank, row.team, row.manager, row.actualRank, row.actualPoints, row.points, row.points - row.actualPoints, row.rankChange, row.removedPoints, row.captainPoints, row.benchPoints, row.sourceAdjustment || 0, row.transferCost, result.asOf, result.provisional]);
   const url = URL.createObjectURL(new Blob(['\ufeff' + rows.map(row => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
