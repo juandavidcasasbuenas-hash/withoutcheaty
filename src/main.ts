@@ -84,9 +84,9 @@ function renderResult(data: LeagueResult) {
   document.body.classList.add('has-results');
   $('results').hidden = false;
   $('league-title').textContent = data.league.name;
-  $('results-kicker').textContent = `LEAGUE ${data.league.id} / THE TABLE, RECONSIDERED`;
+  $('results-kicker').textContent = '114 CHARGES. ZERO CITY FIXTURES.';
   const eventLabel = data.gameweek ? `GW ${data.startEvent}–${data.gameweek}` : 'Season not started';
-  $('results-scope').textContent = `${eventLabel} · ${data.entries} ${data.entries === 1 ? 'manager' : 'managers'} · ${data.removedFixtures} City ${data.removedFixtures === 1 ? 'fixture' : 'fixtures'} removed`;
+  $('results-scope').textContent = `League ${data.league.id} · ${eventLabel} · ${data.entries} ${data.entries === 1 ? 'manager' : 'managers'} · ${data.removedFixtures} City ${data.removedFixtures === 1 ? 'fixture' : 'fixtures'} removed`;
   const asOf = new Date(data.asOf);
   $('results-updated').textContent = `Checked ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone: 'Europe/London' }).format(asOf)}`;
   $('provisional-note').hidden = !data.provisional;

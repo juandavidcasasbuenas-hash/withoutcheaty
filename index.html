@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#173e2e" />
     <meta name="description" content="Your Fantasy Premier League, without Manchester City fixtures. Recalculate your mini-league with proper captaincy, automatic substitutions and chips." />
-    <meta property="og:title" content="withoutcheaty — Your league. Minus City." />
-    <meta property="og:description" content="See your FPL mini-league in a different light. City fixtures out. Every point accounted for." />
-    <title>withoutcheaty — Your league. Minus City.</title>
+    <meta property="og:title" content="withoutcheaty — Your league. Minus Cheaty." />
+    <meta property="og:description" content="114 charges. Zero City fixtures. See your FPL mini-league with City matches removed and every captain and substitute accounted for." />
+    <title>withoutcheaty — Your league. Minus Cheaty.</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
@@ -20,9 +20,9 @@
       <main>
         <section class="hero" aria-labelledby="hero-title">
           <div class="hero-copy">
-            <p class="eyebrow"><span class="status-dot"></span> A fresh look at your FPL league</p>
-            <h1 id="hero-title">Your league.<br><span>Minus City.</span></h1>
-            <p class="hero-description">Same managers. Same decisions. A whole different table. See where you stand when Manchester City fixtures don’t count.</p>
+            <p class="eyebrow"><span class="status-dot"></span> For the good of the group chat</p>
+            <h1 id="hero-title">Your league.<br><span>Minus Cheaty.</span></h1>
+            <p class="hero-description">Same managers. Same questionable transfers. See where your FPL league stands when Manchester City fixtures don’t count.</p>
             <form id="league-form" class="league-form" novalidate>
               <label for="league-id">Your FPL league number</label>
               <div class="lookup-row"><div class="input-wrap"><span aria-hidden="true">#</span><input id="league-id" name="league" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="9" placeholder="e.g. 309341" autocomplete="off" aria-describedby="input-help input-error" required></div><button class="button button-primary" id="submit-button" type="submit">Reveal the table <span aria-hidden="true">↗</span></button></div>
@@ -31,10 +31,10 @@
             </form>
           </div>
           <div class="hero-art" aria-hidden="true">
-            <div class="art-top"><span>THE ALTERNATIVE<br>LEAGUE TABLE</span><span class="art-edition">FPL<br>REWORKED</span></div>
+            <div class="art-top"><span>DO THE POZNAŃ.<br>TURN YOUR BACK ON CITY POINTS.</span><span class="art-edition">FPL<br>REMIX</span></div>
             <div class="pitch"><div class="pitch-half"></div><div class="pitch-circle"></div><div class="pitch-box top"></div><div class="pitch-box bottom"></div><span class="pitch-word">MCI</span><div class="strike"></div><div class="pitch-ball">−</div></div>
-            <div class="art-bottom"><span>A different kind<br>of clean sheet.</span><span class="art-arrow">↗</span></div>
-            <span class="art-ticket">CITY FIXTURES<br><strong>OFF THE TABLE.</strong></span>
+            <div class="art-bottom"><span>The only sky blue<br>we’re keeping.</span><span class="art-arrow">↗</span></div>
+            <span class="art-ticket">CITY FIXTURES<br><strong>YOU’RE OFF.</strong></span>
           </div>
         </section>
         <section class="loading-state" id="loading" aria-live="polite" hidden>
@@ -42,7 +42,7 @@
         </section>
         <div class="request-error" id="request-error" role="alert" hidden></div>
         <section id="results" class="results" aria-labelledby="league-title" hidden>
-          <div class="results-heading"><div><p class="eyebrow" id="results-kicker">THE TABLE, RECONSIDERED</p><h2 id="league-title"></h2></div><div class="result-actions"><button class="button button-small" id="share-button" type="button">Copy link ↗</button><button class="button button-small" id="refresh-button" type="button" aria-label="Refresh league standings">Refresh ↻</button></div></div>
+          <div class="results-heading"><div><p class="eyebrow" id="results-kicker">114 CHARGES. ZERO CITY FIXTURES.</p><h2 id="league-title"></h2></div><div class="result-actions"><button class="button button-small" id="share-button" type="button">Copy link ↗</button><button class="button button-small" id="refresh-button" type="button" aria-label="Refresh league standings">Refresh ↻</button></div></div>
           <div class="results-meta"><span id="results-scope"></span><span id="results-updated"></span></div>
           <p class="provisional-note" id="provisional-note" hidden></p>
           <p class="result-story" id="result-story"></p>
@@ -52,7 +52,7 @@
           <p class="source-note">Calculated from the <a id="source-link" target="_blank" rel="noopener noreferrer">official FPL API ↗</a>. Updates when you look up or refresh a league.</p>
         </section>
         <section class="methodology" id="methodology" aria-labelledby="method-title">
-          <div class="method-intro"><p class="eyebrow">EVERY POINT ACCOUNTED FOR</p><h2 id="method-title">How this result<br> was calculated.</h2><p>No new transfers. No hindsight.<br> Just your original decisions, rescored.</p></div>
+          <div class="method-intro"><p class="eyebrow">THE BANTER’S PETTY. THE MATHS ISN’T.</p><h2 id="method-title">How this result<br> was calculated.</h2><p>No new transfers. No hindsight.<br> Just your original decisions, rescored.</p><span class="method-stamp" aria-hidden="true">BENCH CHECKED<br>ARMBAND PASSED</span></div>
           <div class="method-details">
             <details open><summary><span class="step-number">01</span> Take City fixtures out <span class="details-symbol" aria-hidden="true">+</span></summary><div class="details-content">Every fixture involving Manchester City becomes a blank gameweek for both sides. We remove all points from that match: goals, assists, clean sheets, saves, bonus and defensive contributions, plus any negative points. Points from other fixtures in a double gameweek stay.</div></details>
             <details><summary><span class="step-number">02</span> Pass the armband properly <span class="details-symbol" aria-hidden="true">+</span></summary><div class="details-content">If your captain has no appearance in a remaining fixture, captaincy passes to an eligible vice-captain. Triple Captain passes with it. If neither qualifies, there’s no captain bonus and the chip stays used. A captain who plays another fixture in the same gameweek keeps the armband.</div></details>
@@ -60,10 +60,11 @@
             <details><summary><span class="step-number">04</span> Keep your decisions intact <span class="details-symbol" aria-hidden="true">+</span></summary><div class="details-content">Your squad, transfers, transfer hits, chip choices and bench order stay as they were. We recalculate every scored gameweek from the league’s start. Equal point totals are separated by fewer transfers, excluding Wildcard and Free Hit transfers. This is a scoring what-if, not a prediction of how you’d manage a season without City.</div></details>
             <details><summary><span class="step-number">05</span> Be clear about live gameweeks <span class="details-symbol" aria-hidden="true">+</span></summary><div class="details-content">A gameweek in progress is marked provisional. We count points already earned and project automatic substitutions. Players with an unplayed remaining fixture provisionally keep their starting spot, bench priority and captaincy. Final appearances, bonus points and FPL corrections can change the result. Published FPL totals may also lag projected substitutions.</div></details>
             <p class="method-footnote">Works with classic mini-leagues of up to 200 teams. You need the numeric league ID, not an invite code. No FPL login needed. <a href="https://fantasy.premierleague.com/help/rules" target="_blank" rel="noopener noreferrer">FPL scoring rules ↗</a></p>
+            <details class="banter-footnotes"><summary>Behind the banter <span class="details-symbol" aria-hidden="true">+</span></summary><div class="details-content"><p>The <a href="https://www.premierleague.com/en/news/4727779/premier-league-statement-manchester-city-fc/" target="_blank" rel="noopener noreferrer">Commission found City guilty on 29 September 2026</a>. City <a href="https://www.premierleague.com/en/news/4729207/premier-league-statement-manchester-city-fc-appeal-decision-of-independent-commission-02-october-2026" target="_blank" rel="noopener noreferrer">have appealed</a>; the guilty findings stand unless overturned. References checked 12 October 2026.</p><p>The <a href="https://www.mancity.com/citytv/city-plus/the-story-of-the-poznan-63738862" target="_blank" rel="noopener noreferrer">Poznań means turning your back on the pitch</a>. Andy Burnham <a href="https://www.the-independent.com/news/uk/politics/burnham-man-city-premier-league-charges-uae-government-b3059249.html" target="_blank" rel="noopener noreferrer">urged against leaping to judgment</a>. We’re just here for the group chat.</p></div></details>
           </div>
         </section>
       </main>
-      <footer class="footer"><a class="footer-brand" href="/">withoutcheaty.</a><span>All the rivalry. A different reality.</span><p>An independent fan project. Not affiliated with FPL, the Premier League or any club.</p></footer>
+      <footer class="footer"><a class="footer-brand" href="/">withoutcheaty.</a><span>No fence-sitting, Andy. Just points.</span><p>An independent fan project. Not affiliated with FPL, the Premier League or any club.</p></footer>
     </div>
     <div class="toast" id="toast" role="status" hidden></div>
     <script type="module" src="/src/main.ts"></script>
